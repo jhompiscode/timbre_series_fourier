@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: #0a0f0d;
+    color: #e2f1ea;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+    user-select: none;
+  }
+}
+
+/* Custom CRT & Acoustic Lab Scrollbar and Sliders */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0f0d;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f332b;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #00ff9d;
+}
+
+input[type="range"].lab-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #14201b;
+  height: 6px;
+  border-radius: 3px;
+  border: 1px solid #1f332b;
+  outline: none;
+}
+
+input[type="range"].lab-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  background: #00ff9d;
+  cursor: pointer;
+  border: 1px solid #0a0f0d;
+  box-shadow: 0 0 8px rgba(0, 255, 157, 0.6);
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+input[type="range"].lab-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background: #5effc0;
+}
+
+input[type="range"].lab-slider-amber::-webkit-slider-thumb {
+  background: #ffb300;
+  box-shadow: 0 0 8px rgba(255, 179, 0, 0.6);
+}
+
+input[type="range"].lab-slider-amber::-webkit-slider-thumb:hover {
+  background: #ffd54f;
+}
+
+.scanline-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0) 50%,
+    rgba(0, 255, 157, 0.02) 50%,
+    rgba(0, 255, 157, 0.02)
+  );
+  background-size: 100% 4px;
+}
+
+.glow-phosphor {
+  text-shadow: 0 0 10px rgba(0, 255, 157, 0.45);
+}
+
+.glow-amber {
+  text-shadow: 0 0 10px rgba(255, 179, 0, 0.45);
+}

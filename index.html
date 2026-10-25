@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laboratorio Espectral: Síntesis de Fourier y Timbre Instrumental</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-lab-bg text-emerald-50 min-h-screen flex flex-col selection:bg-lab-phosphor selection:text-black">
+    <!-- Top Acoustic Console Header -->
+    <header class="border-b border-lab-border bg-lab-panel/95 backdrop-blur px-4 lg:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded bg-lab-surface border border-lab-phosphor/60 flex items-center justify-center shadow-[0_0_12px_rgba(0,255,157,0.2)]">
+          <span class="font-mono font-bold text-lab-phosphor text-sm">∑f₀</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-mono text-sm sm:text-base font-bold tracking-tight text-emerald-50 glow-phosphor">
+              LABORATORIO ESPECTRAL: SÍNTESIS DE FOURIER Y TIMBRE INSTRUMENTAL
+            </h1>
+            <span class="hidden md:inline-block font-mono text-[10px] px-2 py-0.5 rounded bg-lab-phosphor/10 border border-lab-phosphor/40 text-lab-phosphor">
+              DSP N=8 · PeriodicWave
+            </span>
+          </div>
+          <p class="font-mono text-[11px] text-emerald-400/70">
+            Síntesis Aditiva en Tiempo Real · Dominio del Tiempo x(t) ↔ Dominio de la Frecuencia (A₁–A₈)
+          </p>
+        </div>
+      </div>
+
+      <!-- Live Audio Engine Status Pill -->
+      <div class="flex items-center gap-3 bg-lab-surface px-3 py-1.5 rounded border border-lab-border">
+        <span id="audio-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-700"></span>
+        <span id="audio-status-text" class="font-mono text-xs text-emerald-400/70">
+          AUDIO BLOQUEADO (CLIC PARA INICIAR)
+        </span>
+      </div>
+    </header>
+
+    <!-- Main Workbench Grid -->
+    <main class="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-4 p-4 lg:p-5 max-w-[1720px] w-full mx-auto">
+      <!-- LEFT & CENTER COLUMN: Dual Canvas Visualizer + Telemetry + Virtual Keyboard (8 cols on XL) -->
+      <section class="xl:col-span-8 flex flex-col gap-4">
+        <!-- Dual Canvas Card -->
+        <div class="bg-lab-panel border border-lab-border rounded-lg overflow-hidden shadow-xl flex flex-col">
+          <!-- Scope Toolbar -->
+          <div class="px-4 py-2.5 bg-lab-surface/80 border-b border-lab-border flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs text-emerald-300/80 uppercase">Modo Temporal:</span>
+              <button
+                id="btn-scope-flow"
+                type="button"
+                class="px-2.5 py-1 text-xs font-mono rounded bg-lab-phosphor text-black font-semibold"
+              >
+                Animación de Flujo Temporal
+              </button>
+              <button
+                id="btn-scope-static"
+                type="button"
+                class="px-2.5 py-1 text-xs font-mono rounded bg-lab-surface text-emerald-200 border border-lab-border hover:border-lab-phosphor/50"
+              >
+                Onda Estática (Periodo Simple)
+              </button>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <label class="flex items-center gap-1.5 cursor-pointer font-mono text-xs text-emerald-200">
+                <input
+                  id="chk-decomposition"
+                  type="checkbox"
+                  checked
+                  class="accent-lab-phosphor rounded cursor-pointer"
+                />
+                <span>Trazos Individuales (n·f₀)</span>
+              </label>
+
+              <label class="flex items-center gap-1.5 cursor-pointer font-mono text-xs text-emerald-200">
+                <input
+                  id="chk-normalize"
+                  type="checkbox"
+                  checked
+                  class="accent-lab-phosphor rounded cursor-pointer"
+                />
+                <span>Auto-Escala</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- High-DPI Dual Synchronized Canvas -->
+          <div class="relative w-full h-[510px] sm:h-[560px] scanline-overlay">
+            <canvas id="spectrum-canvas" class="w-full h-full block touch-none"></canvas>
+          </div>
+        </div>
+
+        <!-- Virtual Keyboard & ADSR Trigger Deck -->
+        <div class="bg-lab-panel border border-lab-border rounded-lg p-3.5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs font-bold text-lab-amber uppercase tracking-wider">
+                Teclado Virtual de Disparo (La3 220 Hz – Do5 523 Hz)
+              </span>
+              <span class="font-mono text-[11px] text-emerald-400/60 hidden sm:inline">
+                · Usa el ratón o las teclas [A W S D E F T G H U J I K O L]
+              </span>
+            </div>
+            <span id="preset-acoustic-note" class="font-mono text-xs text-lab-phosphor/90">
+              Violín: Rico en armónicos pares e impares, otorgando calidez expresiva y proyección.
+            </span>
+          </div>
+
+          <div
+            id="virtual-keyboard-container"
+            class="flex items-stretch gap-1.5 overflow-x-auto pb-1"
+          ></div>
+        </div>
+
+        <!-- Acoustic & Mathematical Telemetry Console -->
+        <div class="bg-lab-panel border border-lab-border rounded-lg p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- Instantaneous Fourier Series Equation -->
+          <div class="lg:col-span-7 flex flex-col justify-between bg-lab-surface/60 border border-lab-border rounded p-3">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="font-mono text-[11px] font-bold uppercase text-lab-phosphor tracking-wider">
+                  1. Ecuación Instantánea de la Serie de Fourier
+                </span>
+                <span class="font-mono text-[10px] text-emerald-400/60">
+                  x(t) = ∑ Aₙ·sin(2π·n·f₀·t)
+                </span>
+              </div>
+              <div
+                id="telemetry-equation-text"
+                class="font-mono text-xs sm:text-sm text-emerald-100 bg-black/50 border border-lab-border/80 rounded p-2.5 overflow-x-auto whitespace-nowrap"
+              >
+                x(t) = 1.00·sin(2π·220t)
+              </div>
+            </div>
+
+            <div class="mt-2.5 pt-2 border-t border-lab-border/60 flex items-center justify-between gap-2">
+              <span class="font-mono text-[10px] text-emerald-400/60 shrink-0">LaTeX:</span>
+              <code
+                id="telemetry-equation-latex"
+                class="font-mono text-[11px] text-lab-amber/90 truncate select-all"
+              >
+                x(t) = 1.00\sin(2\pi f_0 t)
+              </code>
+            </div>
+          </div>
+
+          <!-- Spectral Energy Distribution & Psychoacoustic Character -->
+          <div class="lg:col-span-5 flex flex-col justify-between gap-3">
+            <!-- Energy Meter -->
+            <div class="bg-lab-surface/60 border border-lab-border rounded p-3">
+              <div class="flex items-center justify-between text-xs font-mono mb-1.5">
+                <span class="text-emerald-300/80 font-semibold">2. Distribución de Energía Espectral</span>
+                <span class="text-lab-amber">THD: <strong id="telemetry-thd">0.0%</strong></span>
+              </div>
+
+              <!-- Stacked Energy Bar -->
+              <div class="w-full h-2.5 bg-black/60 rounded overflow-hidden flex border border-lab-border mb-2">
+                <div id="telemetry-bar-fund" class="bg-lab-phosphor h-full transition-all duration-150" style="width: 70%"></div>
+                <div id="telemetry-bar-harm" class="bg-lab-amber h-full transition-all duration-150" style="width: 30%"></div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                <div class="flex items-center justify-between bg-black/30 px-2 py-1 rounded">
+                  <span class="text-emerald-300/70">Fundamental (E₁):</span>
+                  <strong id="telemetry-fund-pct" class="text-lab-phosphor">68.5%</strong>
+                </div>
+                <div class="flex items-center justify-between bg-black/30 px-2 py-1 rounded">
+                  <span class="text-emerald-300/70">Armónicos (∑E₂..₈):</span>
+                  <strong id="telemetry-harm-pct" class="text-lab-amber">31.5%</strong>
+                </div>
+                <div class="flex items-center justify-between bg-black/30 px-2 py-1 rounded">
+                  <span class="text-emerald-300/70">Balance Par/Impar:</span>
+                  <strong id="telemetry-odd-even" class="text-emerald-100">Equilibrado</strong>
+                </div>
+                <div class="flex items-center justify-between bg-black/30 px-2 py-1 rounded">
+                  <span class="text-emerald-300/70">Centroide:</span>
+                  <strong id="telemetry-centroid" class="text-emerald-100">2.10·f₀</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Psychoacoustic Descriptor -->
+            <div class="bg-lab-surface/60 border border-lab-border rounded p-3">
+              <div class="font-mono text-[11px] font-bold uppercase text-lab-amber tracking-wider mb-1">
+                3. Carácter Psicoacústico Percibido
+              </div>
+              <div id="telemetry-char-title" class="font-mono text-xs font-bold text-emerald-50">
+                Rico, Expresivo y Continuo
+              </div>
+              <p id="telemetry-char-desc" class="text-xs text-emerald-300/75 mt-0.5 leading-relaxed">
+                Distribución progresiva de armónicos pares e impares que produce plenitud armónica y definición.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: DSP Synthesizer Controls, Presets & Precision Harmonic Bank (4 cols on XL) -->
+      <aside class="xl:col-span-4 flex flex-col gap-4">
+        <!-- Master DSP Engine & Transport Module -->
+        <div class="bg-lab-panel border border-lab-border rounded-lg p-4 flex flex-col gap-3.5">
+          <div class="flex items-center justify-between border-b border-lab-border pb-2">
+            <h2 class="font-mono text-xs font-bold uppercase tracking-wider text-lab-phosphor">
+              Motor de Audio DSP (Web Audio API)
+            </h2>
+            <span class="font-mono text-[10px] text-emerald-400/60">Float32Array(9)</span>
+          </div>
+
+          <!-- Safe Autoplay Unlock + Drone Toggle Button -->
+          <button
+            id="btn-audio-power"
+            type="button"
+            class="w-full py-2.5 px-4 rounded font-mono text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 bg-lab-surface border border-lab-phosphor text-lab-phosphor hover:bg-lab-phosphor hover:text-black"
+          >
+            <span class="w-2.5 h-2.5 rounded-full bg-lab-phosphor"></span>
+            <span>INICIAR MOTOR DSP / DRON</span>
+          </button>
+
+          <!-- Dual Playback Mode Switch -->
+          <div class="flex flex-col gap-1.5">
+            <span class="font-mono text-[11px] text-emerald-300/70">Modo de Reproducción Dual:</span>
+            <div class="flex items-center gap-2">
+              <button id="btn-mode-drone" type="button">1. Dron Continuo</button>
+              <button id="btn-mode-keyboard" type="button">2. Teclado Virtual (ADSR)</button>
+            </div>
+          </div>
+
+          <!-- ADSR Profile Selector -->
+          <div class="flex flex-col gap-1.5">
+            <span class="font-mono text-[11px] text-emerald-300/70">Envolvente de Disparo (Teclado):</span>
+            <div class="flex items-center gap-2">
+              <button id="btn-env-sustained" type="button">Envolvente Sostenida (Arco/Viento)</button>
+              <button id="btn-env-percussive" type="button">Envolvente Percusiva (Pluck)</button>
+            </div>
+          </div>
+
+          <!-- Fundamental Frequency f0 Control (110 Hz - 880 Hz) -->
+          <div class="bg-lab-surface/70 border border-lab-border rounded p-3 flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <label for="slider-f0" class="font-mono text-xs font-semibold text-emerald-100">
+                Frecuencia Fundamental (f₀)
+              </label>
+              <span id="readout-f0" class="font-mono text-xs font-bold text-lab-phosphor">
+                220.0 Hz (La3)
+              </span>
+            </div>
+
+            <input
+              id="slider-f0"
+              type="range"
+              min="110"
+              max="880"
+              step="0.5"
+              value="220"
+              class="lab-slider w-full"
+            />
+
+            <div class="flex items-center justify-between gap-1.5 pt-1">
+              <button
+                type="button"
+                data-quick-f0="110"
+                class="flex-1 py-1 rounded bg-black/40 border border-lab-border hover:border-lab-phosphor font-mono text-[10px] text-emerald-200"
+              >
+                110 Hz (La2)
+              </button>
+              <button
+                type="button"
+                data-quick-f0="220"
+                class="flex-1 py-1 rounded bg-black/40 border border-lab-border hover:border-lab-phosphor font-mono text-[10px] text-emerald-200"
+              >
+                220 Hz (La3)
+              </button>
+              <button
+                type="button"
+                data-quick-f0="440"
+                class="flex-1 py-1 rounded bg-black/40 border border-lab-border hover:border-lab-phosphor font-mono text-[10px] text-emerald-200"
+              >
+                440 Hz (La4)
+              </button>
+              <button
+                type="button"
+                data-quick-f0="880"
+                class="flex-1 py-1 rounded bg-black/40 border border-lab-border hover:border-lab-phosphor font-mono text-[10px] text-emerald-200"
+              >
+                880 Hz (La5)
+              </button>
+            </div>
+          </div>
+
+          <!-- Master Volume Gain Control -->
+          <div class="bg-lab-surface/70 border border-lab-border rounded p-3 flex flex-col gap-1.5">
+            <div class="flex items-center justify-between">
+              <label for="slider-volume" class="font-mono text-xs font-semibold text-emerald-100">
+                Ganancia Maestra (Anti-Clic)
+              </label>
+              <span id="readout-volume" class="font-mono text-xs font-bold text-lab-amber">45%</span>
+            </div>
+            <input
+              id="slider-volume"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.45"
+              class="lab-slider lab-slider-amber w-full"
+            />
+          </div>
+        </div>
+
+        <!-- Instrument & Classic Waveform Presets -->
+        <div class="bg-lab-panel border border-lab-border rounded-lg p-4 flex flex-col gap-2.5">
+          <div class="flex items-center justify-between border-b border-lab-border pb-2">
+            <h2 class="font-mono text-xs font-bold uppercase tracking-wider text-lab-amber">
+              Presets Espectrales e Instrumentos
+            </h2>
+            <span class="font-mono text-[10px] text-emerald-400/60">Interpolación Suave</span>
+          </div>
+
+          <div id="presets-container" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-1.5"></div>
+        </div>
+
+        <!-- Precision Harmonic Fader Bank (A1 .. A8) -->
+        <div class="bg-lab-panel border border-lab-border rounded-lg p-4 flex flex-col gap-2.5">
+          <div class="flex items-center justify-between border-b border-lab-border pb-2">
+            <h2 class="font-mono text-xs font-bold uppercase tracking-wider text-lab-phosphor">
+              Banco de Coeficientes Armónicos (A₁ – A₈)
+            </h2>
+            <div class="flex items-center gap-1.5">
+              <button
+                id="btn-clear-harmonics"
+                type="button"
+                class="font-mono text-[10px] px-2 py-0.5 rounded bg-lab-surface border border-lab-border hover:border-lab-amber text-emerald-200"
+                title="Dejar solo la fundamental A₁=1.0"
+              >
+                Solo A₁
+              </button>
+              <button
+                id="btn-reset-sine"
+                type="button"
+                class="font-mono text-[10px] px-2 py-0.5 rounded bg-lab-surface border border-lab-border hover:border-lab-phosphor text-emerald-200"
+                title="Restaurar serie armónica 1/n"
+              >
+                1/n
+              </button>
+            </div>
+          </div>
+
+          <div id="harmonic-sliders-container" class="flex flex-col gap-1.5"></div>
+        </div>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
